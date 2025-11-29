@@ -3,7 +3,16 @@
 # Validates that all monitoring exporters are healthy
 
 # Get the repository root
+# shellcheck disable=SC2034
 REPO_ROOT="$(cd "${BATS_TEST_DIRNAME}/../.." && pwd)"
+
+# Helper function to count non-running pods
+# Arguments: $1 - pod output text
+# Returns: count of non-running pods (0 if all running)
+count_non_running_pods() {
+    local pod_output="$1"
+    echo "$pod_output" | grep -vc "Running" || true
+}
 
 # Setup
 setup() {
@@ -32,7 +41,7 @@ setup() {
 
     # Check that all pods are Running
     local non_running
-    non_running=$(echo "$output" | grep -v "Running" | wc -l)
+    non_running=$(count_non_running_pods "$output")
     [ "$non_running" -eq 0 ]
 }
 
@@ -49,7 +58,7 @@ setup() {
     fi
 
     local non_running
-    non_running=$(echo "$output" | grep -v "Running" | wc -l)
+    non_running=$(count_non_running_pods "$output")
     [ "$non_running" -eq 0 ]
 }
 
@@ -61,7 +70,7 @@ setup() {
     fi
 
     local non_running
-    non_running=$(echo "$output" | grep -v "Running" | wc -l)
+    non_running=$(count_non_running_pods "$output")
     [ "$non_running" -eq 0 ]
 }
 
@@ -77,7 +86,7 @@ setup() {
     fi
 
     local non_running
-    non_running=$(echo "$output" | grep -v "Running" | wc -l)
+    non_running=$(count_non_running_pods "$output")
     [ "$non_running" -eq 0 ]
 }
 
@@ -93,7 +102,7 @@ setup() {
     fi
 
     local non_running
-    non_running=$(echo "$output" | grep -v "Running" | wc -l)
+    non_running=$(count_non_running_pods "$output")
     [ "$non_running" -eq 0 ]
 }
 
@@ -149,6 +158,5 @@ setup() {
 
     if command -v jq &>/dev/null; then
         echo "$output" | jq . >/dev/null 2>&1
-        [ $? -eq 0 ]
     fi
 }

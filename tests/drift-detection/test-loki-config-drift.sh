@@ -3,6 +3,7 @@
 # Detects drift from expected Loki configuration
 
 # Get the repository root
+# shellcheck disable=SC2034
 REPO_ROOT="$(cd "${BATS_TEST_DIRNAME}/../.." && pwd)"
 
 # Expected configuration values

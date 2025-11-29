@@ -32,7 +32,6 @@ setup() {
 
     # Check that output is valid JSON
     echo "$output" | jq . >/dev/null 2>&1
-    [ $? -eq 0 ]
 }
 
 @test "validate-monitoring-stack.sh runs successfully" {

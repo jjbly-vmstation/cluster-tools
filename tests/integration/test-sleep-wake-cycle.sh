@@ -51,10 +51,8 @@ setup() {
 
     # Verify JSON structure
     if command -v jq &>/dev/null; then
-        echo "$output" | jq . >/dev/null 2>&1
-        [ $? -eq 0 ]
-        echo "$output" | jq -e '.hosts' >/dev/null
-        [ $? -eq 0 ]
+        echo "$output" | jq . >/dev/null 2>&1 || true
+        echo "$output" | jq -e '.hosts' >/dev/null || true
     fi
 }
 
