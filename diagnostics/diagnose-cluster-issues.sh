@@ -281,7 +281,7 @@ generate_summary() {
 
         # Check for not ready nodes
         local not_ready
-        not_ready=$(kubectl get nodes --no-headers 2>/dev/null | grep -v " Ready" | wc -l)
+        not_ready=$(kubectl get nodes --no-headers 2>/dev/null | grep -cv " Ready" || true)
         if [[ $not_ready -gt 0 ]]; then
             echo "- WARNING: $not_ready node(s) not in Ready state"
         fi

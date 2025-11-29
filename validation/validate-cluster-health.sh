@@ -293,7 +293,7 @@ check_namespaces() {
 
     # Check for terminating namespaces
     local terminating
-    terminating=$(kubectl get namespaces --no-headers 2>/dev/null | grep "Terminating" | wc -l)
+    terminating=$(kubectl get namespaces --no-headers 2>/dev/null | grep -c "Terminating" || true)
 
     if [[ $terminating -gt 0 ]]; then
         record_result "stuck-namespaces" "fail" "$terminating namespaces stuck in Terminating"

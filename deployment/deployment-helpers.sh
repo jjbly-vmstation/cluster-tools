@@ -67,7 +67,7 @@ wait_for_namespace_ready() {
 
         local not_ready
         not_ready=$(kubectl get pods -n "$namespace" --no-headers 2>/dev/null | \
-            grep -v "Running\|Completed\|Succeeded" | wc -l)
+            grep -cv "Running\|Completed\|Succeeded" || true)
 
         if [[ $not_ready -eq 0 ]]; then
             log_success "All pods in $namespace are ready"
