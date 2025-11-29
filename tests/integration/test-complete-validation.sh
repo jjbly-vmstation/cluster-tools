@@ -11,7 +11,7 @@ setup() {
     if ! command -v kubectl &>/dev/null; then
         skip "kubectl not installed"
     fi
-    
+
     # Check if cluster is reachable
     if ! kubectl cluster-info &>/dev/null; then
         skip "Kubernetes cluster not reachable"
@@ -29,7 +29,7 @@ setup() {
     run "$REPO_ROOT/validation/validate-cluster-health.sh" --json
     echo "$output" >&3
     [ "$status" -lt 2 ]
-    
+
     # Check that output is valid JSON
     echo "$output" | jq . >/dev/null 2>&1
     [ $? -eq 0 ]
@@ -71,7 +71,7 @@ setup() {
         run "$script" --json
         echo "# Testing $script" >&3
         [ "$status" -lt 2 ]
-        
+
         # Verify JSON structure
         if [ -n "$output" ]; then
             echo "$output" | jq -e '.checks' >/dev/null 2>&1 || \

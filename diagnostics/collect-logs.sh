@@ -106,9 +106,9 @@ init_output_dir() {
     local timestamp
     timestamp=$(date +%Y%m%d-%H%M%S)
     OUTPUT_DIR="${OUTPUT_DIR}/logs-${timestamp}"
-    
+
     ensure_directory "$OUTPUT_DIR"
-    
+
     log_info "Logs will be saved to: $OUTPUT_DIR"
 }
 
@@ -117,17 +117,17 @@ init_output_dir() {
 #######################################
 build_kubectl_args() {
     local args=()
-    
+
     if [[ -n "$NAMESPACE" ]]; then
         args+=("-n" "$NAMESPACE")
     else
         args+=("--all-namespaces")
     fi
-    
+
     if [[ -n "$LABEL_SELECTOR" ]]; then
         args+=("-l" "$LABEL_SELECTOR")
     fi
-    
+
     echo "${args[*]}"
 }
 
@@ -136,15 +136,15 @@ build_kubectl_args() {
 #######################################
 build_log_args() {
     local args=()
-    
+
     args+=("--tail=$TAIL_LINES")
-    
+
     if [[ -n "$SINCE" ]]; then
         args+=("--since=$SINCE")
     fi
-    
+
     args+=("--all-containers=true")
-    
+
     echo "${args[*]}"
 }
 
@@ -153,50 +153,50 @@ build_log_args() {
 #######################################
 collect_pod_logs() {
     log_subsection "Collecting Pod Logs"
-    
+
     local kubectl_args
     kubectl_args=$(build_kubectl_args)
-    
+
     local log_args
     log_args=$(build_log_args)
-    
+
     # Get list of pods
     local pods
     # shellcheck disable=SC2086
     pods=$(kubectl get pods $kubectl_args --no-headers -o custom-columns='NAMESPACE:.metadata.namespace,NAME:.metadata.name' 2>/dev/null || true)
-    
+
     if [[ -z "$pods" ]]; then
         log_warn "No pods found matching criteria"
         return 0
     fi
-    
+
     local count=0
     local total
     total=$(echo "$pods" | wc -l)
-    
+
     echo "$pods" | while read -r ns pod; do
         if [[ -n "$pod" ]]; then
             ((count++)) || true
             log_progress "$count" "$total" "Collecting logs: $pod"
-            
+
             local ns_dir="${OUTPUT_DIR}/${ns}"
             ensure_directory "$ns_dir"
-            
+
             # Collect current logs
             # shellcheck disable=SC2086
             kubectl logs -n "$ns" "$pod" $log_args > "${ns_dir}/${pod}.log" 2>&1 || true
-            
+
             # Try to collect previous logs
             # shellcheck disable=SC2086
             kubectl logs -n "$ns" "$pod" $log_args --previous > "${ns_dir}/${pod}-previous.log" 2>&1 || true
-            
+
             # Remove empty previous log files
             if [[ ! -s "${ns_dir}/${pod}-previous.log" ]]; then
                 rm -f "${ns_dir}/${pod}-previous.log"
             fi
         fi
     done
-    
+
     echo ""  # New line after progress
     log_success "Pod logs collected"
 }
@@ -206,18 +206,18 @@ collect_pod_logs() {
 #######################################
 collect_container_info() {
     log_subsection "Collecting Container Information"
-    
+
     local kubectl_args
     kubectl_args=$(build_kubectl_args)
-    
+
     # Get pod details including container info
     # shellcheck disable=SC2086
     kubectl get pods $kubectl_args -o wide > "${OUTPUT_DIR}/pod-summary.txt" 2>&1 || true
-    
+
     # Get container statuses
     # shellcheck disable=SC2086
     kubectl get pods $kubectl_args -o custom-columns='NAMESPACE:.metadata.namespace,POD:.metadata.name,CONTAINERS:.spec.containers[*].name,STATUS:.status.containerStatuses[*].ready,RESTARTS:.status.containerStatuses[*].restartCount' > "${OUTPUT_DIR}/container-status.txt" 2>&1 || true
-    
+
     log_success "Container information collected"
 }
 
@@ -226,13 +226,13 @@ collect_container_info() {
 #######################################
 collect_related_events() {
     log_subsection "Collecting Related Events"
-    
+
     if [[ -n "$NAMESPACE" ]]; then
         kubectl get events -n "$NAMESPACE" --sort-by='.lastTimestamp' > "${OUTPUT_DIR}/events.txt" 2>&1 || true
     else
         kubectl get events --all-namespaces --sort-by='.lastTimestamp' > "${OUTPUT_DIR}/events.txt" 2>&1 || true
     fi
-    
+
     log_success "Events collected"
 }
 
@@ -241,9 +241,9 @@ collect_related_events() {
 #######################################
 generate_summary() {
     log_subsection "Generating Summary"
-    
+
     local summary_file="${OUTPUT_DIR}/collection-summary.txt"
-    
+
     {
         echo "Log Collection Summary"
         echo "======================"
@@ -259,7 +259,7 @@ generate_summary() {
         echo "Directory structure:"
         find "$OUTPUT_DIR" -type d | sort | sed 's/^/  /'
     } > "$summary_file"
-    
+
     log_success "Summary generated"
 }
 
@@ -268,15 +268,15 @@ generate_summary() {
 #######################################
 create_archive() {
     log_subsection "Creating Archive"
-    
+
     local archive_name
     archive_name="$(dirname "$OUTPUT_DIR")/$(basename "$OUTPUT_DIR").tar.gz"
-    
+
     tar -czf "$archive_name" -C "$(dirname "$OUTPUT_DIR")" "$(basename "$OUTPUT_DIR")" 2>/dev/null || {
         log_warn "Could not create compressed archive"
         return 0
     }
-    
+
     log_success "Archive created: $archive_name"
 }
 
@@ -285,33 +285,33 @@ create_archive() {
 #######################################
 main() {
     parse_args "$@"
-    
+
     # Check prerequisites
     require_command kubectl
-    
+
     if ! kubectl_ready; then
         log_error "kubectl is not configured or cluster is not reachable"
         exit 2
     fi
-    
+
     log_section "Log Collection"
     log_kv "Namespace" "${NAMESPACE:-all}"
     log_kv "Labels" "${LABEL_SELECTOR:-none}"
     log_kv "Since" "${SINCE:-all time}"
     log_kv "Tail lines" "$TAIL_LINES"
-    
+
     # Initialize output
     init_output_dir
-    
+
     # Collect logs
     collect_pod_logs
     collect_container_info
     collect_related_events
-    
+
     # Generate summary and archive
     generate_summary
     create_archive
-    
+
     log_section "Log Collection Complete"
     log_info "Logs saved to: $OUTPUT_DIR"
 }

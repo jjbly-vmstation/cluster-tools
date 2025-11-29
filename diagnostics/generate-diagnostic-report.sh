@@ -81,7 +81,7 @@ parse_args() {
                 ;;
         esac
     done
-    
+
     # Validate format
     case "$FORMAT" in
         text|html|markdown) ;;
@@ -98,7 +98,7 @@ parse_args() {
 format_header() {
     local title="$1"
     local level="${2:-1}"
-    
+
     case "$FORMAT" in
         html)
             echo "<h${level}>$title</h${level}>"
@@ -126,7 +126,7 @@ format_header() {
 #######################################
 format_code() {
     local content="$1"
-    
+
     case "$FORMAT" in
         html)
             echo "<pre>$content</pre>"
@@ -149,7 +149,7 @@ format_code() {
 #######################################
 format_list_item() {
     local item="$1"
-    
+
     case "$FORMAT" in
         html)
             echo "<li>$item</li>"
@@ -205,13 +205,13 @@ html_end() {
 #######################################
 generate_cluster_overview() {
     format_header "Cluster Overview" 2
-    
+
     local context
     context=$(kubectl config current-context 2>/dev/null || echo "unknown")
-    
+
     local version
     version=$(kubectl version --short 2>/dev/null | grep "Server" || kubectl version 2>/dev/null | grep "Server Version" | head -1 || echo "unknown")
-    
+
     format_list_item "Context: $context"
     format_list_item "Server Version: $version"
     format_list_item "Report Generated: $(date -Iseconds)"
@@ -223,16 +223,16 @@ generate_cluster_overview() {
 #######################################
 generate_node_status() {
     format_header "Node Status" 2
-    
+
     local node_status
     node_status=$(kubectl get nodes -o wide 2>/dev/null || echo "Unable to retrieve node status")
-    
+
     format_code "$node_status"
-    
+
     # Node resource usage if available
     local node_resources
     node_resources=$(kubectl top nodes 2>/dev/null || echo "")
-    
+
     if [[ -n "$node_resources" ]]; then
         format_header "Node Resource Usage" 3
         format_code "$node_resources"
@@ -244,15 +244,15 @@ generate_node_status() {
 #######################################
 generate_workload_summary() {
     format_header "Workload Summary" 2
-    
+
     # Pod summary by namespace
     local pod_summary
     pod_summary=$(kubectl get pods --all-namespaces --no-headers 2>/dev/null | \
         awk '{ns[$1]++} END {for (n in ns) print n": "ns[n]" pods"}' | sort || echo "Unable to retrieve")
-    
+
     format_header "Pods by Namespace" 3
     format_code "$pod_summary"
-    
+
     # Deployment status
     local deployment_status
     deployment_status=$(kubectl get deployments --all-namespaces --no-headers 2>/dev/null | \
@@ -260,7 +260,7 @@ generate_workload_summary() {
             split($3, a, "/");
             if (a[1] != a[2]) print $1"/"$2": "a[1]"/"a[2]" ready"
         }' || echo "")
-    
+
     if [[ -n "$deployment_status" ]]; then
         format_header "Deployments Not Fully Ready" 3
         format_code "$deployment_status"
@@ -272,18 +272,18 @@ generate_workload_summary() {
 #######################################
 generate_resource_utilization() {
     format_header "Resource Utilization" 2
-    
+
     # Top consuming pods
     local top_pods
     top_pods=$(kubectl top pods --all-namespaces --sort-by=memory 2>/dev/null | head -11 || echo "Metrics not available")
-    
+
     format_header "Top Memory Consuming Pods" 3
     format_code "$top_pods"
-    
+
     # Resource quotas
     local quotas
     quotas=$(kubectl get resourcequotas --all-namespaces 2>/dev/null || echo "No resource quotas")
-    
+
     format_header "Resource Quotas" 3
     format_code "$quotas"
 }
@@ -293,11 +293,11 @@ generate_resource_utilization() {
 #######################################
 generate_events() {
     format_header "Recent Events" 2
-    
+
     # Warning events
     local warnings
     warnings=$(kubectl get events --all-namespaces --field-selector type=Warning --sort-by='.lastTimestamp' 2>/dev/null | tail -20 || echo "No warning events")
-    
+
     format_header "Warning Events (Last 20)" 3
     format_code "$warnings"
 }
@@ -307,49 +307,49 @@ generate_events() {
 #######################################
 generate_issues() {
     format_header "Potential Issues" 2
-    
+
     local issues_found=false
-    
+
     # Not Ready nodes
     local not_ready_nodes
     not_ready_nodes=$(kubectl get nodes --no-headers 2>/dev/null | grep -v " Ready" || true)
-    
+
     if [[ -n "$not_ready_nodes" ]]; then
         format_header "Nodes Not Ready" 3
         format_code "$not_ready_nodes"
         issues_found=true
     fi
-    
+
     # Failed pods
     local failed_pods
     failed_pods=$(kubectl get pods --all-namespaces --field-selector='status.phase=Failed' --no-headers 2>/dev/null || true)
-    
+
     if [[ -n "$failed_pods" ]]; then
         format_header "Failed Pods" 3
         format_code "$failed_pods"
         issues_found=true
     fi
-    
+
     # Pending pods
     local pending_pods
     pending_pods=$(kubectl get pods --all-namespaces --field-selector='status.phase=Pending' --no-headers 2>/dev/null || true)
-    
+
     if [[ -n "$pending_pods" ]]; then
         format_header "Pending Pods" 3
         format_code "$pending_pods"
         issues_found=true
     fi
-    
+
     # CrashLoopBackOff pods
     local crashloop_pods
     crashloop_pods=$(kubectl get pods --all-namespaces --no-headers 2>/dev/null | grep "CrashLoopBackOff" || true)
-    
+
     if [[ -n "$crashloop_pods" ]]; then
         format_header "CrashLoopBackOff Pods" 3
         format_code "$crashloop_pods"
         issues_found=true
     fi
-    
+
     if [[ "$issues_found" == "false" ]]; then
         echo "No significant issues detected."
         echo ""
@@ -361,16 +361,16 @@ generate_issues() {
 #######################################
 generate_report() {
     html_start
-    
+
     format_header "Kubernetes Cluster Diagnostic Report" 1
-    
+
     generate_cluster_overview
     generate_node_status
     generate_workload_summary
     generate_resource_utilization
     generate_events
     generate_issues
-    
+
     html_end
 }
 
@@ -379,17 +379,17 @@ generate_report() {
 #######################################
 main() {
     parse_args "$@"
-    
+
     # Check prerequisites
     require_command kubectl
-    
+
     if ! kubectl_ready; then
         log_error "kubectl is not configured or cluster is not reachable"
         exit 2
     fi
-    
+
     log_info "Generating diagnostic report..."
-    
+
     if [[ -n "$OUTPUT_FILE" ]]; then
         generate_report > "$OUTPUT_FILE"
         log_success "Report saved to: $OUTPUT_FILE"

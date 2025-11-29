@@ -113,7 +113,7 @@ parse_args() {
                 ;;
         esac
     done
-    
+
     if [[ -z "$MAC_ADDRESS" ]]; then
         log_error "MAC address or hostname required"
         show_help
@@ -126,12 +126,12 @@ parse_args() {
 #######################################
 lookup_host() {
     local host="$1"
-    
+
     if [[ -f "$VMSTATION_CONFIG" ]]; then
         # Config format: hostname mac_address ip_address
         local entry
         entry=$(grep -E "^${host}\s+" "$VMSTATION_CONFIG" 2>/dev/null | head -1 || true)
-        
+
         if [[ -n "$entry" ]]; then
             MAC_ADDRESS=$(echo "$entry" | awk '{print $2}')
             TARGET_HOST=$(echo "$entry" | awk '{print $3}')
@@ -139,7 +139,7 @@ lookup_host() {
             return 0
         fi
     fi
-    
+
     log_error "Host '$host' not found in $VMSTATION_CONFIG"
     return 1
 }
@@ -153,15 +153,15 @@ resolve_target() {
         log_debug "Input is a valid MAC address"
         return 0
     fi
-    
+
     # Try to look up as hostname
     log_debug "Looking up hostname: $MAC_ADDRESS"
     local hostname="$MAC_ADDRESS"
-    
+
     if lookup_host "$hostname"; then
         return 0
     fi
-    
+
     log_error "Invalid MAC address format and hostname not found: $MAC_ADDRESS"
     exit 2
 }
@@ -172,7 +172,7 @@ resolve_target() {
 log_wake_event() {
     local status="$1"
     local log_file="${VMSTATION_LOG_DIR:-/var/log/vmstation}/wake-events.log"
-    
+
     # Ensure log directory exists
     local log_dir
     log_dir=$(dirname "$log_file")
@@ -189,9 +189,9 @@ wait_for_online() {
         log_warn "No IP address known for host, cannot wait for online status"
         return 0
     fi
-    
+
     log_info "Waiting for host to come online (timeout: ${TIMEOUT}s)..."
-    
+
     if wait_for_host "$TARGET_HOST" "$TIMEOUT" 10; then
         log_success "Host $TARGET_HOST is online!"
         log_wake_event "ONLINE"
@@ -211,7 +211,7 @@ send_wake_packet() {
     log_kv "MAC Address" "$MAC_ADDRESS"
     log_kv "Broadcast" "$BROADCAST_ADDR"
     log_kv "Port" "$WOL_PORT"
-    
+
     if send_wol "$MAC_ADDRESS" "$BROADCAST_ADDR" "$WOL_PORT"; then
         log_wake_event "WOL_SENT"
         return 0
@@ -226,25 +226,25 @@ send_wake_packet() {
 #######################################
 main() {
     parse_args "$@"
-    
+
     log_section "VMStation Wake Event"
-    
+
     # Resolve target
     resolve_target
-    
+
     # Send wake packet
     if ! send_wake_packet; then
         log_error "Failed to send Wake-on-LAN packet"
         exit 1
     fi
-    
+
     # Wait for host if requested
     if [[ "$WAIT_FOR_HOST" == "true" ]]; then
         if ! wait_for_online; then
             exit 1
         fi
     fi
-    
+
     log_success "Wake event completed successfully"
 }
 

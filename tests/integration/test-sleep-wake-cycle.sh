@@ -48,7 +48,7 @@ setup() {
 @test "check-power-state.sh JSON output is valid" {
     run "$REPO_ROOT/power-management/check-power-state.sh" --json 127.0.0.1
     [ "$status" -eq 0 ]
-    
+
     # Verify JSON structure
     if command -v jq &>/dev/null; then
         echo "$output" | jq . >/dev/null 2>&1
@@ -72,29 +72,29 @@ setup() {
 
 @test "validate_mac function accepts valid MAC" {
     source "$REPO_ROOT/lib/common-functions.sh"
-    
+
     run validate_mac "AA:BB:CC:DD:EE:FF"
     [ "$status" -eq 0 ]
-    
+
     run validate_mac "aa:bb:cc:dd:ee:ff"
     [ "$status" -eq 0 ]
-    
+
     run validate_mac "11:22:33:44:55:66"
     [ "$status" -eq 0 ]
 }
 
 @test "validate_mac function rejects invalid MAC" {
     source "$REPO_ROOT/lib/common-functions.sh"
-    
+
     run validate_mac "invalid"
     [ "$status" -eq 1 ]
-    
+
     run validate_mac "AA:BB:CC:DD:EE"
     [ "$status" -eq 1 ]
-    
+
     run validate_mac "AA:BB:CC:DD:EE:FF:GG"
     [ "$status" -eq 1 ]
-    
+
     run validate_mac "GG:HH:II:JJ:KK:LL"
     [ "$status" -eq 1 ]
 }

@@ -114,9 +114,9 @@ record_result() {
     local check="$1"
     local status="$2"
     local message="$3"
-    
+
     RESULTS["$check"]="$status|$message"
-    
+
     if [[ "$status" == "pass" ]]; then
         log_success "$check: $message"
     else
@@ -129,7 +129,7 @@ record_result() {
 #######################################
 check_required_tools() {
     log_subsection "Required Tools"
-    
+
     for tool in "${REQUIRED_TOOLS[@]}"; do
         if command_exists "$tool"; then
             local version
@@ -146,7 +146,7 @@ check_required_tools() {
 #######################################
 check_optional_tools() {
     log_subsection "Optional Tools"
-    
+
     for tool in "${OPTIONAL_TOOLS[@]}"; do
         if command_exists "$tool"; then
             log_success "$tool: Available"
@@ -161,20 +161,20 @@ check_optional_tools() {
 #######################################
 check_cluster_connectivity() {
     log_subsection "Cluster Connectivity"
-    
+
     if ! command_exists kubectl; then
         record_result "cluster-connectivity" "fail" "kubectl not available"
         return 1
     fi
-    
+
     if kubectl cluster-info >/dev/null 2>&1; then
         record_result "cluster-connectivity" "pass" "Cluster is reachable"
-        
+
         # Get cluster info
         local context
         context=$(kubectl config current-context 2>/dev/null || echo "unknown")
         log_debug "Current context: $context"
-        
+
         # Check API server health
         if kubectl get --raw='/healthz' >/dev/null 2>&1; then
             record_result "api-server-health" "pass" "API server healthy"
@@ -191,12 +191,12 @@ check_cluster_connectivity() {
 #######################################
 check_rbac_permissions() {
     log_subsection "RBAC Permissions"
-    
+
     if ! command_exists kubectl || ! kubectl_ready; then
         log_debug "Skipping RBAC checks - cluster not available"
         return 0
     fi
-    
+
     # Check basic permissions
     local permissions=(
         "get pods"
@@ -208,7 +208,7 @@ check_rbac_permissions() {
         "get configmaps"
         "create configmaps"
     )
-    
+
     local all_permitted=true
     for perm in "${permissions[@]}"; do
         # shellcheck disable=SC2086
@@ -219,7 +219,7 @@ check_rbac_permissions() {
             all_permitted=false
         fi
     done
-    
+
     if [[ "$all_permitted" == "true" ]]; then
         record_result "rbac-permissions" "pass" "Required permissions available"
     else
@@ -232,25 +232,25 @@ check_rbac_permissions() {
 #######################################
 check_resource_quotas() {
     log_subsection "Resource Quotas"
-    
+
     if ! command_exists kubectl || ! kubectl_ready; then
         log_debug "Skipping quota checks - cluster not available"
         return 0
     fi
-    
+
     # Check for resource quotas in default namespace
     local quota_count
     quota_count=$(kubectl get resourcequotas --no-headers 2>/dev/null | wc -l)
-    
+
     if [[ $quota_count -gt 0 ]]; then
         log_debug "$quota_count resource quota(s) defined"
-        
+
         # Check quota usage
         kubectl get resourcequotas -o custom-columns='NAME:.metadata.name,USED CPU:.status.used.cpu,LIMIT CPU:.status.hard.cpu' 2>/dev/null || true
     else
         log_debug "No resource quotas defined"
     fi
-    
+
     record_result "resource-quotas" "pass" "Resource quotas checked"
 }
 
@@ -259,15 +259,15 @@ check_resource_quotas() {
 #######################################
 check_helm_repos() {
     log_subsection "Helm Repositories"
-    
+
     if ! command_exists helm; then
         log_debug "Helm not available - skipping repo check"
         return 0
     fi
-    
+
     local repo_count
     repo_count=$(helm repo list 2>/dev/null | tail -n +2 | wc -l)
-    
+
     if [[ $repo_count -gt 0 ]]; then
         record_result "helm-repos" "pass" "$repo_count repo(s) configured"
         log_debug "Helm repositories:"
@@ -284,20 +284,20 @@ check_config_file() {
     if [[ -z "$CONFIG_FILE" ]]; then
         return 0
     fi
-    
+
     log_subsection "Configuration File"
-    
+
     if [[ ! -f "$CONFIG_FILE" ]]; then
         record_result "config-file" "fail" "File not found: $CONFIG_FILE"
         return 1
     fi
-    
+
     # Check file is readable
     if [[ ! -r "$CONFIG_FILE" ]]; then
         record_result "config-file" "fail" "File not readable: $CONFIG_FILE"
         return 1
     fi
-    
+
     # Validate YAML syntax if yq is available
     if command_exists yq; then
         if yq eval '.' "$CONFIG_FILE" >/dev/null 2>&1; then
@@ -312,7 +312,7 @@ check_config_file() {
             record_result "config-syntax" "fail" "Invalid YAML syntax"
         fi
     fi
-    
+
     record_result "config-file" "pass" "Configuration file exists"
 }
 
@@ -321,13 +321,13 @@ check_config_file() {
 #######################################
 check_disk_space() {
     log_subsection "Disk Space"
-    
+
     local available_space
     available_space=$(df -h . | tail -1 | awk '{print $4}')
-    
+
     local available_bytes
     available_bytes=$(df . | tail -1 | awk '{print $4}')
-    
+
     # Check if at least 1GB available (approximately)
     if [[ $available_bytes -gt 1000000 ]]; then
         record_result "disk-space" "pass" "$available_space available"
@@ -342,32 +342,32 @@ check_disk_space() {
 output_json() {
     local passed=0
     local failed=0
-    
+
     echo "{"
     echo '  "timestamp": "'"$(date -Iseconds)"'",'
     echo '  "checks": {'
-    
+
     local first=true
     for check in "${!RESULTS[@]}"; do
         local result="${RESULTS[$check]}"
         local status="${result%%|*}"
         local message="${result#*|}"
-        
+
         if [[ "$status" == "pass" ]]; then
             ((passed++)) || true
         else
             ((failed++)) || true
         fi
-        
+
         if [[ "$first" == "true" ]]; then
             first=false
         else
             echo ","
         fi
-        
+
         echo -n '    "'"$check"'": {"status": "'"$status"'", "message": "'"$message"'"}'
     done
-    
+
     echo ""
     echo "  },"
     echo '  "summary": {"passed": '$passed', "failed": '$failed', "total": '$((passed + failed))'}'
@@ -380,7 +380,7 @@ output_json() {
 output_summary() {
     local passed=0
     local failed=0
-    
+
     for check in "${!RESULTS[@]}"; do
         local result="${RESULTS[$check]}"
         local status="${result%%|*}"
@@ -390,12 +390,12 @@ output_summary() {
             ((failed++)) || true
         fi
     done
-    
+
     log_section "Pre-Deployment Summary"
     log_kv "Total Checks" "$((passed + failed))"
     log_kv "Passed" "$passed"
     log_kv "Failed" "$failed"
-    
+
     if [[ $failed -eq 0 ]]; then
         echo ""
         log_success "All pre-deployment checks passed! Safe to proceed."
@@ -412,7 +412,7 @@ output_summary() {
 #######################################
 main() {
     parse_args "$@"
-    
+
     if [[ "$JSON_OUTPUT" != "true" ]]; then
         log_section "Pre-Deployment Checklist"
         log_kv "Timestamp" "$(date -Iseconds)"
@@ -420,7 +420,7 @@ main() {
             log_kv "Config File" "$CONFIG_FILE"
         fi
     fi
-    
+
     # Run all checks
     check_required_tools
     check_optional_tools
@@ -430,7 +430,7 @@ main() {
     check_resource_quotas
     check_helm_repos
     check_config_file
-    
+
     # Output results
     if [[ "$JSON_OUTPUT" == "true" ]]; then
         output_json

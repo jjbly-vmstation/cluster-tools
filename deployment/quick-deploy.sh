@@ -109,20 +109,20 @@ parse_args() {
                 ;;
         esac
     done
-    
+
     if [[ -z "$TARGET" ]]; then
         log_error "Deployment target required"
         show_help
         exit 2
     fi
-    
+
     # Validate target
     if [[ -z "${DEPLOY_TARGETS[$TARGET]:-}" ]]; then
         log_error "Unknown target: $TARGET"
         log_info "Valid targets: ${!DEPLOY_TARGETS[*]}"
         exit 2
     fi
-    
+
     # Validate environment
     case "$ENVIRONMENT" in
         dev|staging|prod) ;;
@@ -139,25 +139,25 @@ parse_args() {
 #######################################
 pre_deploy_checks() {
     log_subsection "Pre-Deployment Checks"
-    
+
     # Check required tools
     require_command kubectl
     require_command helm
-    
+
     # Check cluster connectivity
     if ! kubectl_ready; then
         log_error "Cannot connect to Kubernetes cluster"
         exit 2
     fi
     log_success "Cluster connection verified"
-    
+
     # Get cluster info
     local context
     context=$(kubectl config current-context 2>/dev/null || echo "unknown")
     log_kv "Context" "$context"
     log_kv "Environment" "$ENVIRONMENT"
     log_kv "Target" "$TARGET"
-    
+
     # Production safety check
     if [[ "$ENVIRONMENT" == "prod" ]] && [[ "$FORCE" != "true" ]]; then
         log_warn "Deploying to PRODUCTION environment"
@@ -173,19 +173,19 @@ pre_deploy_checks() {
 #######################################
 deploy_monitoring() {
     log_subsection "Deploying Monitoring Stack"
-    
+
     local namespace="monitoring"
-    
+
     # Create namespace if needed
     run_cmd kubectl create namespace "$namespace" --dry-run=client -o yaml | \
         run_cmd kubectl apply -f -
-    
+
     # Add Helm repositories
     log_info "Adding Helm repositories..."
     run_cmd helm repo add prometheus-community https://prometheus-community.github.io/helm-charts || true
     run_cmd helm repo add grafana https://grafana.github.io/helm-charts || true
     run_cmd helm repo update
-    
+
     # Deploy Prometheus
     log_info "Deploying Prometheus..."
     local helm_args=(
@@ -194,13 +194,13 @@ deploy_monitoring() {
         "--namespace" "$namespace"
         "--set" "server.persistentVolume.enabled=false"
     )
-    
+
     if [[ "$DRY_RUN" == "true" ]]; then
         helm_args+=("--dry-run")
     fi
-    
+
     run_cmd helm "${helm_args[@]}"
-    
+
     # Deploy Grafana
     log_info "Deploying Grafana..."
     helm_args=(
@@ -210,13 +210,13 @@ deploy_monitoring() {
         "--set" "persistence.enabled=false"
         "--set" "adminPassword=admin"
     )
-    
+
     if [[ "$DRY_RUN" == "true" ]]; then
         helm_args+=("--dry-run")
     fi
-    
+
     run_cmd helm "${helm_args[@]}"
-    
+
     log_success "Monitoring stack deployment initiated"
 }
 
@@ -225,18 +225,18 @@ deploy_monitoring() {
 #######################################
 deploy_logging() {
     log_subsection "Deploying Logging Stack"
-    
+
     local namespace="logging"
-    
+
     # Create namespace if needed
     run_cmd kubectl create namespace "$namespace" --dry-run=client -o yaml | \
         run_cmd kubectl apply -f -
-    
+
     # Add Helm repository
     log_info "Adding Grafana Helm repository..."
     run_cmd helm repo add grafana https://grafana.github.io/helm-charts || true
     run_cmd helm repo update
-    
+
     # Deploy Loki
     log_info "Deploying Loki..."
     local helm_args=(
@@ -246,13 +246,13 @@ deploy_logging() {
         "--set" "promtail.enabled=true"
         "--set" "grafana.enabled=false"
     )
-    
+
     if [[ "$DRY_RUN" == "true" ]]; then
         helm_args+=("--dry-run")
     fi
-    
+
     run_cmd helm "${helm_args[@]}"
-    
+
     log_success "Logging stack deployment initiated"
 }
 
@@ -261,18 +261,18 @@ deploy_logging() {
 #######################################
 deploy_ingress() {
     log_subsection "Deploying Ingress Controller"
-    
+
     local namespace="ingress-nginx"
-    
+
     # Create namespace if needed
     run_cmd kubectl create namespace "$namespace" --dry-run=client -o yaml | \
         run_cmd kubectl apply -f -
-    
+
     # Add Helm repository
     log_info "Adding ingress-nginx Helm repository..."
     run_cmd helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx || true
     run_cmd helm repo update
-    
+
     # Deploy ingress-nginx
     log_info "Deploying ingress-nginx..."
     local helm_args=(
@@ -280,13 +280,13 @@ deploy_ingress() {
         "ingress-nginx" "ingress-nginx/ingress-nginx"
         "--namespace" "$namespace"
     )
-    
+
     if [[ "$DRY_RUN" == "true" ]]; then
         helm_args+=("--dry-run")
     fi
-    
+
     run_cmd helm "${helm_args[@]}"
-    
+
     log_success "Ingress controller deployment initiated"
 }
 
@@ -295,9 +295,9 @@ deploy_ingress() {
 #######################################
 deploy_storage() {
     log_subsection "Deploying Storage Components"
-    
+
     log_info "Setting up storage class..."
-    
+
     # Create a simple local-path storage class
     local storage_class='
 apiVersion: storage.k8s.io/v1
@@ -309,13 +309,13 @@ metadata:
 provisioner: rancher.io/local-path
 volumeBindingMode: WaitForFirstConsumer
 '
-    
+
     if [[ "$DRY_RUN" == "true" ]]; then
         log_info "[DRY-RUN] Would create local-path storage class"
     else
         echo "$storage_class" | run_cmd kubectl apply -f -
     fi
-    
+
     log_success "Storage components deployment initiated"
 }
 
@@ -334,15 +334,15 @@ deploy_all() {
 #######################################
 post_deploy_verify() {
     log_subsection "Post-Deployment Verification"
-    
+
     if [[ "$DRY_RUN" == "true" ]]; then
         log_info "[DRY-RUN] Skipping verification"
         return 0
     fi
-    
+
     log_info "Waiting for deployments to stabilize..."
     sleep 10
-    
+
     # Check deployments
     case "$TARGET" in
         monitoring)
@@ -373,15 +373,15 @@ post_deploy_verify() {
 #######################################
 main() {
     parse_args "$@"
-    
+
     log_section "Quick Deploy"
     log_kv "Target" "$TARGET"
     log_kv "Environment" "$ENVIRONMENT"
     log_kv "Mode" "$([[ "$DRY_RUN" == "true" ]] && echo "Dry-Run" || echo "Live")"
-    
+
     # Pre-deployment checks
     pre_deploy_checks
-    
+
     # Deploy based on target
     case "$TARGET" in
         monitoring)
@@ -400,12 +400,12 @@ main() {
             deploy_all
             ;;
     esac
-    
+
     # Post-deployment
     post_deploy_verify
-    
+
     log_section "Deployment Complete"
-    
+
     if [[ "$DRY_RUN" == "true" ]]; then
         log_info "This was a dry-run. No changes were made."
     else

@@ -40,26 +40,26 @@ setup() {
 @test "vmstation-collect-wake-logs.sh can run without config" {
     local temp_dir
     temp_dir=$(mktemp -d)
-    
+
     run "$REPO_ROOT/power-management/vmstation-collect-wake-logs.sh" -o "$temp_dir"
-    
+
     # Should complete (may have warnings but not fail critically)
     [ "$status" -lt 2 ]
-    
+
     # Cleanup
     rm -rf "$temp_dir"
 }
 
 @test "network-utils.sh ping_host function works" {
     source "$REPO_ROOT/lib/network-utils.sh"
-    
+
     run ping_host "127.0.0.1" 2
     [ "$status" -eq 0 ]
 }
 
 @test "network-utils.sh check_port function works" {
     source "$REPO_ROOT/lib/network-utils.sh"
-    
+
     # This may fail if nothing is listening, which is OK
     run check_port "127.0.0.1" 22 2
     # Just check it doesn't crash
@@ -68,55 +68,55 @@ setup() {
 
 @test "validate_ip function works correctly" {
     source "$REPO_ROOT/lib/common-functions.sh"
-    
+
     # Valid IPs
     run validate_ip "192.168.1.1"
     [ "$status" -eq 0 ]
-    
+
     run validate_ip "10.0.0.1"
     [ "$status" -eq 0 ]
-    
+
     run validate_ip "255.255.255.255"
     [ "$status" -eq 0 ]
-    
+
     # Invalid IPs
     run validate_ip "256.1.1.1"
     [ "$status" -eq 1 ]
-    
+
     run validate_ip "192.168.1"
     [ "$status" -eq 1 ]
-    
+
     run validate_ip "not.an.ip"
     [ "$status" -eq 1 ]
 }
 
 @test "validate_mac function works correctly" {
     source "$REPO_ROOT/lib/common-functions.sh"
-    
+
     # Valid MACs
     run validate_mac "AA:BB:CC:DD:EE:FF"
     [ "$status" -eq 0 ]
-    
+
     run validate_mac "aa:bb:cc:dd:ee:ff"
     [ "$status" -eq 0 ]
-    
+
     run validate_mac "00:11:22:33:44:55"
     [ "$status" -eq 0 ]
-    
+
     # Invalid MACs
     run validate_mac "AA:BB:CC:DD:EE"
     [ "$status" -eq 1 ]
-    
+
     run validate_mac "AA:BB:CC:DD:EE:FF:GG"
     [ "$status" -eq 1 ]
-    
+
     run validate_mac "not-a-mac"
     [ "$status" -eq 1 ]
 }
 
 @test "get_default_gateway function works" {
     source "$REPO_ROOT/lib/network-utils.sh"
-    
+
     run get_default_gateway
     # Should succeed or at least not crash
     [ "$status" -eq 0 ] || [ "$status" -eq 1 ]

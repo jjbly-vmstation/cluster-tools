@@ -34,7 +34,7 @@ command_exists() {
 require_command() {
     local cmd="${1:?Command name required}"
     local package="${2:-$cmd}"
-    
+
     if ! command_exists "$cmd"; then
         log_error "Required command '$cmd' not found. Please install '$package'."
         exit 1
@@ -71,7 +71,7 @@ require_root() {
 require_var() {
     local name="${1:?Variable name required}"
     local value="${2:-}"
-    
+
     if [[ -z "$value" ]]; then
         log_error "Required variable '$name' is not set or empty."
         exit 1
@@ -87,7 +87,7 @@ require_var() {
 #######################################
 require_file() {
     local file="${1:?File path required}"
-    
+
     if [[ ! -f "$file" ]]; then
         log_error "Required file not found: $file"
         exit 1
@@ -103,7 +103,7 @@ require_file() {
 #######################################
 require_directory() {
     local dir="${1:?Directory path required}"
-    
+
     if [[ ! -d "$dir" ]]; then
         log_error "Required directory not found: $dir"
         exit 1
@@ -119,7 +119,7 @@ require_directory() {
 #######################################
 ensure_directory() {
     local dir="${1:?Directory path required}"
-    
+
     if [[ ! -d "$dir" ]]; then
         if ! mkdir -p "$dir"; then
             log_error "Failed to create directory: $dir"
@@ -141,22 +141,22 @@ confirm() {
     local prompt="${1:?Prompt message required}"
     local default="${2:-n}"
     local response
-    
+
     # In non-interactive mode, use default
     if [[ ! -t 0 ]]; then
         [[ "$default" == "y" || "$default" == "Y" ]]
         return $?
     fi
-    
+
     if [[ "$default" == "y" || "$default" == "Y" ]]; then
         prompt="$prompt [Y/n]: "
     else
         prompt="$prompt [y/N]: "
     fi
-    
+
     read -r -p "$prompt" response
     response="${response:-$default}"
-    
+
     [[ "$response" =~ ^[Yy] ]]
 }
 
@@ -174,7 +174,7 @@ run_cmd() {
         log_info "[DRY-RUN] Would execute: $*"
         return 0
     fi
-    
+
     log_debug "Executing: $*"
     "$@"
 }
@@ -192,7 +192,7 @@ wait_for() {
     local timeout="${1:?Timeout required}"
     local interval="${2:?Interval required}"
     shift 2
-    
+
     local elapsed=0
     while [[ $elapsed -lt $timeout ]]; do
         if "$@" >/dev/null 2>&1; then
@@ -201,7 +201,7 @@ wait_for() {
         sleep "$interval"
         elapsed=$((elapsed + interval))
     done
-    
+
     return 1
 }
 
@@ -215,16 +215,16 @@ wait_for() {
 create_temp_file() {
     local prefix="${1:-cluster-tools}"
     local temp_file
-    
+
     temp_file=$(mktemp "/tmp/${prefix}.XXXXXX") || {
         log_error "Failed to create temporary file"
         exit 1
     }
-    
+
     # Register cleanup on script exit
     # shellcheck disable=SC2064
     trap "rm -f '$temp_file'" EXIT
-    
+
     echo "$temp_file"
 }
 
@@ -245,7 +245,7 @@ parse_common_options() {
     DEBUG="${DEBUG:-false}"
     DRY_RUN="${DRY_RUN:-false}"
     QUIET="${QUIET:-false}"
-    
+
     while [[ $# -gt 0 ]]; do
         case "$1" in
             -v|--verbose)
@@ -281,7 +281,7 @@ parse_common_options() {
                 ;;
         esac
     done
-    
+
     # Return remaining arguments
     echo "$@"
 }
@@ -294,13 +294,13 @@ parse_common_options() {
 get_script_dir() {
     local source="${BASH_SOURCE[1]:-${BASH_SOURCE[0]}}"
     local dir
-    
+
     while [[ -L "$source" ]]; do
         dir="$(cd -P "$(dirname "$source")" && pwd)"
         source="$(readlink "$source")"
         [[ "$source" != /* ]] && source="$dir/$source"
     done
-    
+
     cd -P "$(dirname "$source")" && pwd
 }
 
@@ -312,7 +312,7 @@ get_script_dir() {
 get_repo_root() {
     local script_dir
     script_dir="$(get_script_dir)"
-    
+
     # Navigate up from lib/ to repo root
     dirname "$script_dir"
 }
@@ -326,7 +326,7 @@ kubectl_ready() {
     if ! command_exists kubectl; then
         return 1
     fi
-    
+
     kubectl cluster-info >/dev/null 2>&1
 }
 
@@ -343,25 +343,25 @@ retry_with_backoff() {
     local max_retries="${1:?Max retries required}"
     local delay="${2:?Initial delay required}"
     shift 2
-    
+
     local attempt=1
     local exit_code=0
-    
+
     while [[ $attempt -le $max_retries ]]; do
         if "$@"; then
             return 0
         fi
         exit_code=$?
-        
+
         if [[ $attempt -lt $max_retries ]]; then
             log_warn "Command failed (attempt $attempt/$max_retries). Retrying in ${delay}s..."
             sleep "$delay"
             delay=$((delay * 2))
         fi
-        
+
         attempt=$((attempt + 1))
     done
-    
+
     log_error "Command failed after $max_retries attempts"
     return $exit_code
 }
@@ -376,20 +376,20 @@ retry_with_backoff() {
 validate_ip() {
     local ip="${1:?IP address required}"
     local regex='^([0-9]{1,3}\.){3}[0-9]{1,3}$'
-    
+
     if [[ ! "$ip" =~ $regex ]]; then
         return 1
     fi
-    
+
     local IFS='.'
     read -ra octets <<< "$ip"
-    
+
     for octet in "${octets[@]}"; do
         if [[ $octet -gt 255 ]]; then
             return 1
         fi
     done
-    
+
     return 0
 }
 
@@ -403,6 +403,6 @@ validate_ip() {
 validate_mac() {
     local mac="${1:?MAC address required}"
     local regex='^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$'
-    
+
     [[ "$mac" =~ $regex ]]
 }

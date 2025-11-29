@@ -62,7 +62,7 @@ _get_timestamp() {
 _should_log() {
     local level="${1:-INFO}"
     local current_level="${LOG_LEVEL:-INFO}"
-    
+
     [[ ${_LOG_LEVELS[$level]:-1} -ge ${_LOG_LEVELS[$current_level]:-1} ]]
 }
 
@@ -78,23 +78,23 @@ _log() {
     local color="$2"
     local message="$3"
     local timestamp
-    
+
     if ! _should_log "$level"; then
         return 0
     fi
-    
+
     timestamp="$(_get_timestamp)"
-    
+
     # Format: [TIMESTAMP] [LEVEL] message
     local formatted_msg="[${timestamp}] [${level}] ${message}"
-    
+
     # Log to stderr for WARN and ERROR, stdout for others
     if [[ "$level" == "WARN" || "$level" == "ERROR" ]]; then
         echo -e "${color}${formatted_msg}${_COLOR_RESET}" >&2
     else
         echo -e "${color}${formatted_msg}${_COLOR_RESET}"
     fi
-    
+
     # Log to file if LOG_FILE is set
     if [[ -n "${LOG_FILE:-}" ]]; then
         echo "${formatted_msg}" >> "$LOG_FILE"
@@ -147,10 +147,10 @@ log_section() {
     local width=60
     local padding=$(( (width - ${#title} - 2) / 2 ))
     local line
-    
+
     printf -v line '%*s' "$width" ''
     line="${line// /=}"
-    
+
     echo ""
     echo -e "${_COLOR_BOLD}${_COLOR_BLUE}${line}${_COLOR_RESET}"
     echo -e "${_COLOR_BOLD}${_COLOR_BLUE}$(printf '%*s' $padding '')= ${title} =$(printf '%*s' $padding '')${_COLOR_RESET}"
@@ -211,21 +211,21 @@ log_progress() {
     local current="${1:?Current step required}"
     local total="${2:?Total steps required}"
     local message="${3:-Processing...}"
-    
+
     local percent=$(( (current * 100) / total ))
     local bar_width=30
     local filled=$(( (percent * bar_width) / 100 ))
     local empty=$(( bar_width - filled ))
-    
+
     local bar
     printf -v bar '%*s' "$filled" ''
     bar="${bar// /#}"
     local empty_bar
     printf -v empty_bar '%*s' "$empty" ''
     empty_bar="${empty_bar// /-}"
-    
+
     printf "\r[%s%s] %3d%% %s" "$bar" "$empty_bar" "$percent" "$message"
-    
+
     if [[ $current -eq $total ]]; then
         echo ""
     fi
@@ -255,10 +255,10 @@ log_end_timer() {
     local start_time="${2:?Start time required}"
     local end_time
     local duration
-    
+
     end_time=$(date +%s)
     duration=$((end_time - start_time))
-    
+
     log_info "Completed: $operation (${duration}s)"
 }
 
@@ -269,7 +269,7 @@ log_end_timer() {
 #######################################
 init_log_file() {
     local log_file="${1:?Log file path required}"
-    
+
     # Ensure directory exists
     local log_dir
     log_dir="$(dirname "$log_file")"
@@ -279,10 +279,10 @@ init_log_file() {
             return 1
         }
     fi
-    
+
     # Set global LOG_FILE
     export LOG_FILE="$log_file"
-    
+
     # Write header to log file
     {
         echo "============================================"
@@ -291,7 +291,7 @@ init_log_file() {
         echo "============================================"
         echo ""
     } >> "$LOG_FILE"
-    
+
     log_debug "Logging to file: $LOG_FILE"
 }
 
@@ -303,12 +303,12 @@ init_log_file() {
 set_log_level() {
     local level="${1:?Log level required}"
     level="${level^^}"  # Convert to uppercase
-    
+
     if [[ -z "${_LOG_LEVELS[$level]:-}" ]]; then
         log_error "Invalid log level: $level. Must be one of: DEBUG, INFO, WARN, ERROR"
         return 1
     fi
-    
+
     export LOG_LEVEL="$level"
     log_debug "Log level set to: $LOG_LEVEL"
 }

@@ -91,7 +91,7 @@ parse_args() {
 record_action() {
     local action="$1"
     ACTIONS_TAKEN+=("$action")
-    
+
     if [[ "$DRY_RUN" == "true" ]]; then
         log_info "[DRY-RUN] Would: $action"
     else
@@ -115,31 +115,31 @@ get_namespace_flag() {
 #######################################
 cleanup_completed_pods() {
     log_subsection "Cleaning Up Completed Pods"
-    
+
     local ns_flag
     ns_flag=$(get_namespace_flag)
-    
+
     local completed_pods
     # shellcheck disable=SC2086
     completed_pods=$(kubectl get pods $ns_flag --field-selector=status.phase=Succeeded --no-headers 2>/dev/null | \
         awk '{if (NF >= 2) print $1"/"$2; else print "default/"$1}' || true)
-    
+
     if [[ -z "$completed_pods" ]]; then
         log_success "No completed pods to clean"
         return 0
     fi
-    
+
     local count
     count=$(echo "$completed_pods" | wc -l)
     log_info "Found $count completed pod(s)"
-    
+
     echo "$completed_pods" | while read -r ns_pod; do
         if [[ -n "$ns_pod" ]]; then
             local ns="${ns_pod%/*}"
             local pod="${ns_pod#*/}"
-            
+
             record_action "Delete completed pod: $pod in $ns"
-            
+
             if [[ "$DRY_RUN" != "true" ]]; then
                 kubectl delete pod -n "$ns" "$pod" 2>/dev/null || {
                     log_warn "Failed to delete pod: $pod"
@@ -154,31 +154,31 @@ cleanup_completed_pods() {
 #######################################
 cleanup_failed_jobs() {
     log_subsection "Cleaning Up Failed Jobs"
-    
+
     local ns_flag
     ns_flag=$(get_namespace_flag)
-    
+
     local failed_jobs
     # shellcheck disable=SC2086
     failed_jobs=$(kubectl get jobs $ns_flag --no-headers 2>/dev/null | \
         awk '$2 ~ /^0\// {if (NF >= 2) print $1"/"$2; else print "default/"$1}' || true)
-    
+
     if [[ -z "$failed_jobs" ]]; then
         log_success "No failed jobs to clean"
         return 0
     fi
-    
+
     local count
     count=$(echo "$failed_jobs" | wc -l)
     log_info "Found $count failed job(s)"
-    
+
     echo "$failed_jobs" | while read -r ns_job; do
         if [[ -n "$ns_job" ]]; then
             local ns="${ns_job%/*}"
             local job="${ns_job#*/}"
-            
+
             record_action "Delete failed job: $job in $ns"
-            
+
             if [[ "$DRY_RUN" != "true" ]]; then
                 kubectl delete job -n "$ns" "$job" 2>/dev/null || {
                     log_warn "Failed to delete job: $job"
@@ -193,32 +193,32 @@ cleanup_failed_jobs() {
 #######################################
 cleanup_old_completed_jobs() {
     log_subsection "Cleaning Up Old Completed Jobs"
-    
+
     local ns_flag
     ns_flag=$(get_namespace_flag)
-    
+
     # Find completed jobs older than 1 day
     local old_jobs
     # shellcheck disable=SC2086
     old_jobs=$(kubectl get jobs $ns_flag --no-headers 2>/dev/null | \
         awk '$2 ~ /^1\// && $4 ~ /[0-9]+d/ {if (NF >= 2) print $1"/"$2; else print "default/"$1}' || true)
-    
+
     if [[ -z "$old_jobs" ]]; then
         log_success "No old completed jobs to clean"
         return 0
     fi
-    
+
     local count
     count=$(echo "$old_jobs" | wc -l)
     log_info "Found $count old completed job(s)"
-    
+
     echo "$old_jobs" | while read -r ns_job; do
         if [[ -n "$ns_job" ]]; then
             local ns="${ns_job%/*}"
             local job="${ns_job#*/}"
-            
+
             record_action "Delete old completed job: $job in $ns"
-            
+
             if [[ "$DRY_RUN" != "true" ]]; then
                 kubectl delete job -n "$ns" "$job" 2>/dev/null || {
                     log_warn "Failed to delete job: $job"
@@ -233,13 +233,13 @@ cleanup_old_completed_jobs() {
 #######################################
 find_unused_configmaps() {
     log_subsection "Checking for Unused ConfigMaps"
-    
+
     local ns_flag
     ns_flag=$(get_namespace_flag)
-    
+
     # This is a simplified check - in production, you'd want more thorough analysis
     log_info "Checking ConfigMaps not referenced by pods..."
-    
+
     # Note: Full analysis would require checking pod references
     # This is left as informational only
     log_debug "This check requires manual verification before deletion"
@@ -251,23 +251,23 @@ find_unused_configmaps() {
 #######################################
 check_orphaned_pvcs() {
     log_subsection "Checking for Orphaned PVCs"
-    
+
     local ns_flag
     ns_flag=$(get_namespace_flag)
-    
+
     # Find PVCs not mounted by any pod
     local all_pvcs
     # shellcheck disable=SC2086
     all_pvcs=$(kubectl get pvc $ns_flag --no-headers 2>/dev/null | \
         awk '{if (NF >= 2) print $1"/"$2; else print "default/"$1}' || true)
-    
+
     if [[ -z "$all_pvcs" ]]; then
         log_success "No PVCs found"
         return 0
     fi
-    
+
     log_info "Found PVCs - checking usage..."
-    
+
     # This requires checking pod volumeMounts, simplified here
     log_debug "Manual verification required for PVC cleanup"
     log_info "Use 'kubectl get pods -o yaml' to verify PVC usage"
@@ -278,16 +278,16 @@ check_orphaned_pvcs() {
 #######################################
 cleanup_old_events() {
     log_subsection "Checking Old Events"
-    
+
     local ns_flag
     ns_flag=$(get_namespace_flag)
-    
+
     # Events are typically cleaned up by the API server based on TTL
     # Just report the count
     local event_count
     # shellcheck disable=SC2086
     event_count=$(kubectl get events $ns_flag --no-headers 2>/dev/null | wc -l)
-    
+
     log_info "Found $event_count events (managed by API server TTL)"
 }
 
@@ -296,7 +296,7 @@ cleanup_old_events() {
 #######################################
 check_empty_secrets() {
     log_subsection "Checking for Potentially Unused Secrets"
-    
+
     # Note: This is informational only - secrets should not be deleted without verification
     log_info "Secret cleanup requires manual verification"
     log_debug "Use 'kubectl get pods -o yaml' to verify Secret usage"
@@ -307,14 +307,14 @@ check_empty_secrets() {
 #######################################
 generate_summary() {
     log_section "Cleanup Summary"
-    
+
     if [[ "$DRY_RUN" == "true" ]]; then
         log_warn "DRY-RUN MODE - No changes were made"
     fi
-    
+
     log_kv "Namespace" "${NAMESPACE:-all}"
     log_kv "Actions" "${#ACTIONS_TAKEN[@]}"
-    
+
     if [[ ${#ACTIONS_TAKEN[@]} -gt 0 ]]; then
         echo ""
         echo "Actions taken:"
@@ -331,19 +331,19 @@ generate_summary() {
 #######################################
 main() {
     parse_args "$@"
-    
+
     # Check prerequisites
     require_command kubectl
-    
+
     if ! kubectl_ready; then
         log_error "kubectl is not configured or cluster is not reachable"
         exit 2
     fi
-    
+
     log_section "Resource Cleanup"
     log_kv "Namespace" "${NAMESPACE:-all}"
     log_kv "Mode" "$([[ "$DRY_RUN" == "true" ]] && echo "Dry-Run" || echo "Live")"
-    
+
     if [[ "$DRY_RUN" != "true" ]]; then
         log_warn "This will DELETE resources from your cluster!"
         if ! confirm "Are you sure you want to continue?"; then
@@ -351,7 +351,7 @@ main() {
             exit 0
         fi
     fi
-    
+
     # Run cleanup
     cleanup_completed_pods
     cleanup_failed_jobs
@@ -360,7 +360,7 @@ main() {
     check_orphaned_pvcs
     cleanup_old_events
     check_empty_secrets
-    
+
     # Summary
     generate_summary
 }

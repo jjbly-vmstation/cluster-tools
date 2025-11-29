@@ -24,7 +24,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/common-functions.sh"
 ping_host() {
     local host="${1:?Host required}"
     local timeout="${2:-5}"
-    
+
     ping -c 1 -W "$timeout" "$host" >/dev/null 2>&1
 }
 
@@ -41,7 +41,7 @@ check_port() {
     local host="${1:?Host required}"
     local port="${2:?Port required}"
     local timeout="${3:-5}"
-    
+
     if command_exists nc; then
         nc -z -w "$timeout" "$host" "$port" 2>/dev/null
     elif command_exists timeout; then
@@ -64,9 +64,9 @@ wait_for_host() {
     local host="${1:?Host required}"
     local timeout="${2:-60}"
     local interval="${3:-5}"
-    
+
     log_info "Waiting for host $host to become reachable..."
-    
+
     if wait_for "$timeout" "$interval" ping_host "$host"; then
         log_success "Host $host is reachable"
         return 0
@@ -91,9 +91,9 @@ wait_for_port() {
     local port="${2:?Port required}"
     local timeout="${3:-60}"
     local interval="${4:-5}"
-    
+
     log_info "Waiting for $host:$port to become available..."
-    
+
     if wait_for "$timeout" "$interval" check_port "$host" "$port"; then
         log_success "Port $host:$port is available"
         return 0
@@ -116,15 +116,15 @@ send_wol() {
     local mac="${1:?MAC address required}"
     local broadcast="${2:-255.255.255.255}"
     local port="${3:-9}"
-    
+
     # Validate MAC address
     if ! validate_mac "$mac"; then
         log_error "Invalid MAC address format: $mac"
         return 1
     fi
-    
+
     log_info "Sending Wake-on-LAN packet to $mac via $broadcast:$port"
-    
+
     # Send using different methods based on available tools
     if command_exists wakeonlan; then
         wakeonlan -i "$broadcast" -p "$port" "$mac"
@@ -147,7 +147,7 @@ s.close()
         log_error "No Wake-on-LAN tool available (wakeonlan, wol, etherwake, or python3)"
         return 1
     fi
-    
+
     log_success "Wake-on-LAN packet sent to $mac"
 }
 
@@ -162,7 +162,7 @@ s.close()
 #######################################
 get_interface_ip() {
     local interface="${1:?Interface name required}"
-    
+
     if command_exists ip; then
         ip -4 addr show "$interface" 2>/dev/null | grep -oP '(?<=inet\s)\d+(\.\d+){3}'
     elif command_exists ifconfig; then
@@ -184,7 +184,7 @@ get_interface_ip() {
 #######################################
 get_interface_mac() {
     local interface="${1:?Interface name required}"
-    
+
     if command_exists ip; then
         ip link show "$interface" 2>/dev/null | grep -oP '(?<=link/ether\s)[0-9a-f:]{17}'
     elif [[ -f "/sys/class/net/$interface/address" ]]; then
@@ -223,7 +223,7 @@ list_interfaces() {
 check_dns() {
     local hostname="${1:?Hostname required}"
     local dns_server="${2:-}"
-    
+
     if command_exists dig; then
         if [[ -n "$dns_server" ]]; then
             dig +short "@$dns_server" "$hostname" >/dev/null 2>&1
@@ -262,14 +262,14 @@ check_http() {
     local expected_status="${2:-200}"
     local timeout="${3:-10}"
     local actual_status
-    
+
     if ! command_exists curl; then
         log_error "curl is required for HTTP checks"
         return 1
     fi
-    
+
     actual_status=$(curl -s -o /dev/null -w '%{http_code}' --connect-timeout "$timeout" "$url" 2>/dev/null)
-    
+
     [[ "$actual_status" == "$expected_status" ]]
 }
 
@@ -286,7 +286,7 @@ get_public_ip() {
         "https://ifconfig.me/ip"
         "https://icanhazip.com"
     )
-    
+
     for service in "${services[@]}"; do
         local ip
         ip=$(curl -s --connect-timeout 5 "$service" 2>/dev/null)
@@ -295,7 +295,7 @@ get_public_ip() {
             return 0
         fi
     done
-    
+
     log_error "Could not determine public IP address"
     return 1
 }
@@ -339,7 +339,7 @@ get_default_gateway() {
 check_connectivity() {
     local hosts=("$@")
     local all_ok=true
-    
+
     for host in "${hosts[@]}"; do
         if ping_host "$host" 2; then
             log_success "$host is reachable"
@@ -348,6 +348,6 @@ check_connectivity() {
             all_ok=false
         fi
     done
-    
+
     $all_ok
 }

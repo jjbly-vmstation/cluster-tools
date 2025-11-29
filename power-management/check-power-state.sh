@@ -112,17 +112,17 @@ load_hosts_from_config() {
         log_error "Config file not found: $CONFIG_FILE"
         exit 2
     fi
-    
+
     log_debug "Loading hosts from $CONFIG_FILE"
-    
+
     while read -r line; do
         # Skip empty lines and comments
         [[ -z "$line" || "$line" == \#* ]] && continue
-        
+
         local hostname ip
         hostname=$(echo "$line" | awk '{print $1}')
         ip=$(echo "$line" | awk '{print $3}')
-        
+
         if [[ -n "$ip" ]]; then
             HOSTS_TO_CHECK+=("$ip")
             log_debug "Added host: $hostname ($ip)"
@@ -138,16 +138,16 @@ check_host() {
     local status="offline"
     local latency="N/A"
     local ssh_status="N/A"
-    
+
     log_debug "Checking host: $host"
-    
+
     # Check ping
     if ping -c 1 -W 2 "$host" >/dev/null 2>&1; then
         status="online"
-        
+
         # Get latency
         latency=$(ping -c 1 -W 2 "$host" 2>/dev/null | grep 'time=' | sed -E 's/.*time=([0-9.]+).*/\1 ms/' || echo "N/A")
-        
+
         # Check SSH port (optional)
         if check_port "$host" 22 2; then
             ssh_status="open"
@@ -155,7 +155,7 @@ check_host() {
             ssh_status="closed"
         fi
     fi
-    
+
     RESULTS["$host"]="$status|$latency|$ssh_status"
 }
 
@@ -164,20 +164,20 @@ check_host() {
 #######################################
 output_text() {
     log_section "Power State Check Results"
-    
+
     printf "%-30s %-10s %-15s %-10s\n" "HOST" "STATUS" "LATENCY" "SSH"
     printf "%-30s %-10s %-15s %-10s\n" "----" "------" "-------" "---"
-    
+
     local online=0
     local offline=0
-    
+
     for host in "${!RESULTS[@]}"; do
         local result="${RESULTS[$host]}"
         local status="${result%%|*}"
         local rest="${result#*|}"
         local latency="${rest%%|*}"
         local ssh="${rest#*|}"
-        
+
         if [[ "$status" == "online" ]]; then
             printf "%-30s \033[0;32m%-10s\033[0m %-15s %-10s\n" "$host" "$status" "$latency" "$ssh"
             ((online++)) || true
@@ -186,7 +186,7 @@ output_text() {
             ((offline++)) || true
         fi
     done
-    
+
     echo ""
     log_kv "Online" "$online"
     log_kv "Offline" "$offline"
@@ -199,11 +199,11 @@ output_text() {
 output_json() {
     local online=0
     local offline=0
-    
+
     echo "{"
     echo '  "timestamp": "'"$(date -Iseconds)"'",'
     echo '  "hosts": {'
-    
+
     local first=true
     for host in "${!RESULTS[@]}"; do
         local result="${RESULTS[$host]}"
@@ -211,22 +211,22 @@ output_json() {
         local rest="${result#*|}"
         local latency="${rest%%|*}"
         local ssh="${rest#*|}"
-        
+
         if [[ "$first" == "true" ]]; then
             first=false
         else
             echo ","
         fi
-        
+
         echo -n '    "'"$host"'": {"status": "'"$status"'", "latency": "'"$latency"'", "ssh": "'"$ssh"'"}'
-        
+
         if [[ "$status" == "online" ]]; then
             ((online++)) || true
         else
             ((offline++)) || true
         fi
     done
-    
+
     echo ""
     echo "  },"
     echo '  "summary": {"online": '$online', "offline": '$offline', "total": '$((online + offline))'}'
@@ -238,35 +238,35 @@ output_json() {
 #######################################
 main() {
     parse_args "$@"
-    
+
     # Load hosts if --all specified
     if [[ "$CHECK_ALL" == "true" ]]; then
         load_hosts_from_config
     fi
-    
+
     # Check if we have hosts to check
     if [[ ${#HOSTS_TO_CHECK[@]} -eq 0 ]]; then
         log_error "No hosts specified"
         log_info "Use -a to check all hosts in config, or specify hosts as arguments"
         exit 2
     fi
-    
+
     if [[ "$JSON_OUTPUT" != "true" ]]; then
         log_info "Checking ${#HOSTS_TO_CHECK[@]} host(s)..."
     fi
-    
+
     # Check each host
     for host in "${HOSTS_TO_CHECK[@]}"; do
         check_host "$host"
     done
-    
+
     # Output results
     if [[ "$JSON_OUTPUT" == "true" ]]; then
         output_json
     else
         output_text
     fi
-    
+
     # Return non-zero if any hosts are offline
     local offline=0
     for host in "${!RESULTS[@]}"; do
@@ -276,7 +276,7 @@ main() {
             ((offline++)) || true
         fi
     done
-    
+
     [[ $offline -eq 0 ]]
 }
 
