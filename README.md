@@ -29,6 +29,7 @@ chmod +x **/*.sh
 ./validation/validate-monitoring-stack.sh
 ```
 
+
 ## Directory Structure
 
 ```
@@ -36,43 +37,23 @@ cluster-tools/
 ├── README.md                    # This file
 ├── IMPROVEMENTS_AND_STANDARDS.md # Best practices documentation
 ├── validation/                   # Validation tools
-│   ├── validate-monitoring-stack.sh
-│   ├── validate-cluster-health.sh
-│   ├── validate-network-connectivity.sh
-│   └── pre-deployment-checklist.sh
 ├── diagnostics/                  # Diagnostic tools
-│   ├── diagnose-monitoring-stack.sh
-│   ├── diagnose-cluster-issues.sh
-│   ├── collect-logs.sh
-│   └── generate-diagnostic-report.sh
 ├── remediation/                  # Remediation tools
-│   ├── remediate-monitoring-stack.sh
-│   ├── fix-common-issues.sh
-│   └── cleanup-resources.sh
 ├── power-management/             # Power management tools
-│   ├── vmstation-event-wake.sh
-│   ├── vmstation-collect-wake-logs.sh
-│   ├── send-wake-on-lan.sh
-│   └── check-power-state.sh
 ├── tests/                        # Test suite
-│   ├── README.md
-│   ├── integration/
-│   ├── component/
-│   ├── drift-detection/
-│   └── syntax/
 ├── deployment/                   # Deployment tools
-│   ├── quick-deploy.sh
-│   └── deployment-helpers.sh
 ├── lib/                          # Shared libraries
-│   ├── common-functions.sh
-│   ├── logging-utils.sh
-│   └── network-utils.sh
-└── docs/                         # Documentation
-    ├── VALIDATION_GUIDE.md
-    ├── DIAGNOSTIC_TOOLS.md
-    ├── TESTING_FRAMEWORK.md
-    └── TOOL_DEVELOPMENT.md
 ```
+
+## Documentation
+
+All detailed operational and tool documentation has been centralized in the [cluster-docs/components/](../cluster-docs/components/) directory. Please refer to that location for:
+- Validation guides
+- Diagnostic tools
+- Testing framework
+- Tool development
+
+This repository only contains the README and improvements/standards documentation.
 
 ## Tools Overview
 
