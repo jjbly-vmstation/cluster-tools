@@ -114,6 +114,13 @@ record_result() {
 
 #######################################
 # Get namespace flag for kubectl
+# Returns a string to be used as kubectl namespace argument.
+# IMPORTANT: This string should NOT be quoted when used
+# because it may contain multiple words (-n namespace or --all-namespaces)
+# and we intentionally want word splitting.
+# Usage: local ns_flag; ns_flag=$(get_ns_flag)
+#        # shellcheck disable=SC2086
+#        kubectl get pods $ns_flag
 #######################################
 get_ns_flag() {
     if [[ -n "$NAMESPACE" ]]; then

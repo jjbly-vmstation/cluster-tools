@@ -190,13 +190,18 @@ fix_retention_period() {
         fi
 
         # Update retention period using sed
+        # Match retention_period at start of line (after possible whitespace) to avoid comments
+        # Using sed instead of bash parameter expansion because we need regex capture groups
         local updated_config
-        updated_config=$(echo "$current_config" | sed "s/retention_period:.*/retention_period: $EXPECTED_RETENTION_PERIOD/g")
+        # shellcheck disable=SC2001
+        updated_config=$(echo "$current_config" | sed "s/^\([[:space:]]*\)retention_period:.*/\1retention_period: $EXPECTED_RETENTION_PERIOD/g")
 
         # Create a patch file
         local patch_file
         patch_file=$(mktemp)
 
+        # Create YAML patch with proper indentation (sed is clearer for line-by-line operations)
+        # shellcheck disable=SC2001
         cat > "$patch_file" << EOF
 data:
   loki.yaml: |

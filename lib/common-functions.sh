@@ -406,3 +406,57 @@ validate_mac() {
 
     [[ "$mac" =~ $regex ]]
 }
+
+#######################################
+# Parse a date string to epoch seconds (cross-platform)
+# Works on both Linux (GNU date) and macOS (BSD date)
+# Arguments:
+#   $1 - Date string to parse
+# Outputs:
+#   Epoch seconds, or empty string on failure
+#######################################
+parse_date_to_epoch() {
+    local date_str="${1:?Date string required}"
+    local epoch=""
+
+    # Try GNU date first (Linux)
+    epoch=$(date -d "$date_str" +%s 2>/dev/null) && echo "$epoch" && return 0
+
+    # Try BSD date (macOS) with common formats
+    # Format: "Jan 01 00:00:00 2024 UTC"
+    epoch=$(date -j -f "%b %d %H:%M:%S %Y %Z" "$date_str" +%s 2>/dev/null) && echo "$epoch" && return 0
+
+    # Format: "2024-01-01 00:00:00"
+    epoch=$(date -j -f "%Y-%m-%d %H:%M:%S" "$date_str" +%s 2>/dev/null) && echo "$epoch" && return 0
+
+    # Format: "2024-01-01T00:00:00Z" (ISO 8601)
+    epoch=$(date -j -f "%Y-%m-%dT%H:%M:%SZ" "$date_str" +%s 2>/dev/null) && echo "$epoch" && return 0
+
+    # Return empty on failure
+    echo ""
+    return 1
+}
+
+#######################################
+# Get date N days ago (cross-platform)
+# Arguments:
+#   $1 - Number of days ago
+#   $2 - Optional: output format (default: %Y-%m-%d)
+# Outputs:
+#   Formatted date string
+#######################################
+get_date_days_ago() {
+    local days="${1:?Days required}"
+    local format="${2:-%Y-%m-%d}"
+    local result=""
+
+    # Try GNU date first (Linux)
+    result=$(date -d "-${days} days" +"$format" 2>/dev/null) && echo "$result" && return 0
+
+    # Try BSD date (macOS)
+    result=$(date -v-"${days}"d +"$format" 2>/dev/null) && echo "$result" && return 0
+
+    # Return empty on failure
+    echo ""
+    return 1
+}
