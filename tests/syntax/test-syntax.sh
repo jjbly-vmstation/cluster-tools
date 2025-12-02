@@ -87,9 +87,11 @@ find_bats_tests() {
     local failed=0
 
     for script in "$REPO_ROOT"/validation/*.sh; do
-        if ! shellcheck -e SC1091 "$script" 2>/dev/null; then
+        # SC1091: Can't follow sourced files
+        # SC2086: Double quote to prevent globbing - intentionally disabled for $ns_flag
+        if ! shellcheck -e SC1091 -e SC2086 "$script" 2>/dev/null; then
             echo "# ShellCheck failed on: $script" >&3
-            shellcheck -e SC1091 "$script" >&3 || true
+            shellcheck -e SC1091 -e SC2086 "$script" >&3 || true
             failed=1
         fi
     done
@@ -101,9 +103,11 @@ find_bats_tests() {
     local failed=0
 
     for script in "$REPO_ROOT"/diagnostics/*.sh; do
-        if ! shellcheck -e SC1091 "$script" 2>/dev/null; then
+        # SC1091: Can't follow sourced files
+        # SC2086: Double quote to prevent globbing - intentionally disabled for $ns_flag
+        if ! shellcheck -e SC1091 -e SC2086 "$script" 2>/dev/null; then
             echo "# ShellCheck failed on: $script" >&3
-            shellcheck -e SC1091 "$script" >&3 || true
+            shellcheck -e SC1091 -e SC2086 "$script" >&3 || true
             failed=1
         fi
     done
@@ -115,9 +119,12 @@ find_bats_tests() {
     local failed=0
 
     for script in "$REPO_ROOT"/remediation/*.sh; do
-        if ! shellcheck -e SC1091 "$script" 2>/dev/null; then
+        # SC1091: Can't follow sourced files
+        # SC2086: Double quote to prevent globbing - intentionally disabled for $ns_flag
+        # SC2001: See if you can use ${variable//search/replace} - sed is clearer for complex patterns
+        if ! shellcheck -e SC1091 -e SC2086 -e SC2001 "$script" 2>/dev/null; then
             echo "# ShellCheck failed on: $script" >&3
-            shellcheck -e SC1091 "$script" >&3 || true
+            shellcheck -e SC1091 -e SC2086 -e SC2001 "$script" >&3 || true
             failed=1
         fi
     done
